@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Avançado de Gestão</title>
+    <!-- Chart.js e Plugin DataLabels -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; color: #333; padding: 20px; }
+        header { margin-bottom: 20px; }
+        header h1 { font-size: 28px; color: #1e293b; }
+        header p { color: #64748b; font-size: 14px; }
+
+        .form-container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+        .form-container h2 { font-size: 18px; color: #1e293b; margin-bottom: 15px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; }
+        .form-group input { padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 15px; outline: none; }
+        .form-group input[readonly] { background-color: #f1f5f9; color: #1e293b; font-weight: bold; border-color: #94a3b8; }
+        .form-group input:focus { border-color: #3b82f6; }
+
+        .btn-submit {
+            grid-column: 1 / -1;
+            background-color: #2563eb;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .kpi-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .kpi-card { background-color: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-left: 5px solid #3b82f6; }
+        .kpi-card.green { border-left-color: #10b981; }
+        .kpi-card.purple { border-left-color: #8b5cf6; }
+        .kpi-card.amber { border-left-color: #f59e0b; }
+        .kpi-card.dark { border-left-color: #0f172a; }
+        .kpi-title { font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: 600; }
+        .kpi-value { font-size: 22px; font-weight: bold; margin: 10px 0; color: #0f172a; }
+        .kpi-sub { font-size: 12px; font-weight: 600; }
+        .text-success { color: #10b981; }
+        .text-danger { color: #ef4444; }
+
+        .charts-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+        .chart-card { background-color: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .chart-card h3 { font-size: 16px; color: #334155; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Painel de Indicadores Financeiros — Controladoria</h1>
+        <p>Acompanhamento executivo automatizado por Entrada e Saída</p>
+    </header>
+
+    <div class="form-container">
+        <h2>Entrada de Dados (Mês Atual e Posição Financeira)</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Entrada (Receita) Atual (R$)</label>
+                <input type="text" id="entAtual" value="170,00" oninput="atualizarDashboard()">
+            </div>
+            <div class="form-group">
+                <label>Saída (Custos) Atual (R$)</label>
+                <input type="text" id="saiAtual" value="70,00" oninput="atualizarDashboard()">
+            </div>
+            <div class="form-group">
+                <label>Líquido Mês Anterior (R$)</label>
+                <input type="text" id="liqAnterior" value="-150,00" oninput="atualizarDashboard()">
+            </div>
+            <div class="form-group">
+                <label>Total Líquido da Empresa (R$)</label>
+                <input type="text" id="totLiquidoEmpresa" value="10000,00" oninput="atualizarDashboard()">
+            </div>
+            <div class="form-group">
+                <label>Novo Saldo Acumulado (R$)</label>
+                <input type="text" id="novoSaldoAcumulado" readonly value="R$ 0,00">
+            </div>
+
+            <button type="button" class="btn-submit" onclick="atualizarDashboard()">Recalcular Dashboard</button>
+        </div>
+    </div>
+
+    <div class="kpi-container">
+        <div class="kpi-card">
+            <div class="kpi-title">Receita Operacional Líquida</div>
+            <div class="kpi-value" id="kpiReceita">R$ 0,00</div>
+            <div class="kpi-sub" id="subReceita">0%</div>
+        </div>
+
+        <div class="kpi-card green">
+            <div class="kpi-title">Margem EBITDA (Estimada)</div>
+            <div class="kpi-value" id="kpiEbitda">0%</div>
+            <div class="kpi-sub" id="subEbitda">0%</div>
+        </div>
+
+        <div class="kpi-card purple">
+            <div class="kpi-title">Lucro Líquido Atual</div>
+            <div class="kpi-value" id="kpiLucro">R$ 0,00</div>
+            <div class="kpi-sub" id="subLucro">0%</div>
+        </div>
+
+        <div class="kpi-card amber">
+            <div class="kpi-title">Total Líquido Empresa</div>
+            <div class="kpi-value" id="kpiTotalEmpresa">R$ 0,00</div>
+            <div class="kpi-sub" style="color: #64748b;">Saldo Inicial</div>
+        </div>
+
+        <div class="kpi-card dark">
+            <div class="kpi-title">Saldo Acumulado Consolidado</div>
+            <div class="kpi-value" id="kpiNovoSaldo">R$ 0,00</div>
+            <div class="kpi-sub" id="subNovoSaldo">Atualizado</div>
+        </div>
+    </div>
+
+    <div class="charts-container">
+        <div class="chart-card">
+            <h3>Comparativo: Mês Anterior vs Mês Atual</h3>
+            <canvas id="comparativoChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h3>Distribuição das Saídas do Mês Atual</h3>
+            <canvas id="custosChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        Chart.register(ChartDataLabels);
+
+        let comparativoChart, custosChart;
+
+        const entAnt = 50.00;
+        const saiAnt = 200.00;
+
+        function parseValor(str) {
+            if (!str) return 0;
+            let valorLimpo = str.toString().trim().replace(/\./g, '').replace(',', '.');
+            return parseFloat(valorLimpo) || 0;
+        }
+
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+        }
+
+        function atualizarDashboard() {
+            const entAtu = parseValor(document.getElementById('entAtual').value);
+            const saiAtu = parseValor(document.getElementById('saiAtual').value);
+            const lucroAnt = parseValor(document.getElementById('liqAnterior').value);
+            const totalEmpresa = parseValor(document.getElementById('totLiquidoEmpresa').value);
+
+            const lucroAtu = entAtu - saiAtu;
+            const ebitdaAnt = entAnt > 0 ? (lucroAnt / entAnt) * 100 : 0;
+            const ebitdaAtu = entAtu > 0 ? (lucroAtu / entAtu) * 100 : 0;
+
+            // Soma algébrica automática (Total Líquido da Empresa + Lucro do Mês Atual)
+            const novoSaldoTotal = totalEmpresa + lucroAtu;
+
+            const varReceita = entAnt > 0 ? (((entAtu - entAnt) / entAnt) * 100).toFixed(2) : 0;
+            const varLucro = lucroAnt !== 0 ? (((lucroAtu - lucroAnt) / Math.abs(lucroAnt)) * 100).toFixed(2) : 0;
+            const varEbitda = (ebitdaAtu - ebitdaAnt).toFixed(2);
+
+            // Atualiza o campo de input de resultado acumulado
+            document.getElementById('novoSaldoAcumulado').value = formatarMoeda(novoSaldoTotal);
+
+            // 1. Receita
+            document.getElementById('kpiReceita').innerText = formatarMoeda(entAtu);
+            const subRec = document.getElementById('subReceita');
+            subRec.innerText = `${varReceita >= 0 ? '▲ +' : '▼ '}${varReceita}% vs mês anterior`;
+            subRec.className = `kpi-sub ${varReceita >= 0 ? 'text-success' : 'text-danger'}`;
+
+            // 2. Lucro Líquido
+            document.getElementById('kpiLucro').innerText = formatarMoeda(lucroAtu);
+            const subLuc = document.getElementById('subLucro');
+            subLuc.innerText = `${varLucro >= 0 ? '▲ +' : '▼ '}${varLucro}% vs mês anterior`;
+            subLuc.className = `kpi-sub ${varLucro >= 0 ? 'text-success' : 'text-danger'}`;
+
+            // 3. Margem EBITDA
+            document.getElementById('kpiEbitda').innerText = `${ebitdaAtu.toFixed(1)}%`;
+            const subEbit = document.getElementById('subEbitda');
+            subEbit.innerText = `${varEbitda >= 0 ? '▲ +' : '▼ '}${varEbitda}% p.p. vs mês anterior`;
+            subEbit.className = `kpi-sub ${varEbitda >= 0 ? 'text-success' : 'text-danger'}`;
+
+            // 4. Saldo Inicial
+            document.getElementById('kpiTotalEmpresa').innerText = formatarMoeda(totalEmpresa);
+
+            // 5. Saldo Acumulado Consolidado
+            document.getElementById('kpiNovoSaldo').innerText = formatarMoeda(novoSaldoTotal);
+            const subSaldo = document.getElementById('subNovoSaldo');
+            subSaldo.innerText = lucroAtu >= 0 ? '▲ Posição Positiva' : '▼ Impacto Negativo';
+            subSaldo.className = `kpi-sub ${lucroAtu >= 0 ? 'text-success' : 'text-danger'}`;
+
+            // 6. Gráfico Comparativo
+            if (comparativoChart) {
+                comparativoChart.data.datasets[0].data = [entAnt, saiAnt, lucroAnt];
+                comparativoChart.data.datasets[1].data = [entAtu, saiAtu, lucroAtu];
+                comparativoChart.update();
+            }
+
+            // 7. Gráfico de Pizza/Rosca (Dramático dinâmico de ±10% conforme Lucro/Prejuízo)
+            if (custosChart) {
+                // Proporções base padrão
+                let propPessoal = 0.40;
+                let propMarketing = 0.20;
+                let propInfra = 0.15;
+                let propOperacional = 0.15;
+                let propOutros = 0.10;
+
+                // Variação dinâmica de 10% dependendo do resultado líquido
+                if (lucroAtu > 0) {
+                    // Com Lucro: Reinveste +10% em Marketing e reduz -10% em Custo Operacional
+                    propMarketing += 0.10;   // Sobe de 20% para 30%
+                    propOperacional -= 0.10; // Cai de 15% para 5%
+                } else if (lucroAtu < 0) {
+                    // Com Prejuízo: Contenção! +10% de peso Operacional e reduz -10% de Marketing
+                    propMarketing -= 0.10;   // Cai de 20% para 10%
+                    propOperacional += 0.10; // Sobe de 15% para 25%
+                }
+
+                custosChart.data.datasets[0].data = [
+                    saiAtu * propPessoal,
+                    saiAtu * propMarketing,
+                    saiAtu * propInfra,
+                    saiAtu * propOperacional,
+                    saiAtu * propOutros
+                ];
+                custosChart.update();
+            }
+        }
+
+        window.onload = function() {
+            const ctx1 = document.getElementById('comparativoChart').getContext('2d');
+            comparativoChart = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['Entrada (Receita)', 'Saída (Custos)', 'Lucro Líquido'],
+                    datasets: [
+                        { label: 'Mês Anterior', data: [0, 0, 0], backgroundColor: '#94a3b8' },
+                        { label: 'Mês Atual', data: [0, 0, 0], backgroundColor: '#2563eb' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { datalabels: { display: false } }
+                }
+            });
+
+            const ctx2 = document.getElementById('custosChart').getContext('2d');
+            custosChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pessoal', 'Marketing', 'Infraestrutura', 'Operacional', 'Outros'],
+                    datasets: [{
+                        data: [0, 0, 0, 0, 0],
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        datalabels: {
+                            color: '#ffffff',
+                            font: { weight: 'bold', size: 13 },
+                            formatter: (value, ctx) => {
+                                let total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                if (!total || total === 0) return '0%';
+                                let pct = ((value / total) * 100).toFixed(1);
+                                return `${pct}%`;
+                            }
+                        }
+                    }
+                }
+            });
+
+            atualizarDashboard();
+        };
+    </script>
+</body>
+</html>
